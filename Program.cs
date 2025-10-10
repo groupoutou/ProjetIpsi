@@ -1,74 +1,139 @@
 ﻿using System;
-using smcs; // Assurez-vous d'importer le namespace smcs
+using System.Threading;
+using System.Net;
+using System.Runtime.InteropServices;
 
-class Program
+
+
+
+namespace ContinuousGrab_cs
 {
-    static void Main(string[] args) 
+    class CallbackHandler : smcs.ICallbackEvent
     {
-        int test;
-        // Initialiser CameraSuite
-        smcs.CameraSuite.InitCameraAPI();
-        smcs.ICameraAPI smcsApi = smcs.CameraSuite.GetCameraAPI();
-
-        // Définir le temps de battement de coeur (optionnel)
-        smcsApi.SetHeartbeatTime(3);
-
-        // Enumérer les appareils
-        smcsApi.FindAllDevices(2.0);
-        smcs.IDevice[] devices = smcsApi.GetAllDevices();
-
-        if (devices.Length == 0)
+        #region ICallbackEvent Members
+        // Warning! Callback handler is called in context of API thread and for real GUI app need to be synchronised to GUI thread.         
+        public void OnConnect(smcs.IDevice device)
         {
-            Console.WriteLine("Aucun appareil trouvé.");
-            return;
+            System.Console.WriteLine("Connected!");
         }
 
-        // Sélectionner le premier appareil
-        smcs.IDevice device = devices[0];
-        Console.WriteLine("Appareil sélectionné : " + device.GetModelName());
-
-        // Connexion à l'appareil
-        bool status = device.Connect();
-        if (!status)
+        public void OnDisconnect(smcs.IDevice device)
         {
-            Console.WriteLine("Échec de la connexion à l'appareil.");
-            return;
+            System.Console.WriteLine("Disconnected!");
         }
 
-        // Utiliser l'appareil (exemple : capturer des images)
-        CaptureImages(device);
+        public void OnLog(smcs.IDevice device, smcs.EventMessage message)
+        {
+            System.Console.WriteLine("Log: " + message.messageString);
+        }
 
-        // Déconnexion et libération des ressources
-        device.Disconnect();
-        smcs.CameraSuite.ExitCameraAPI();
+        #endregion
     }
 
-    static void CaptureImages(smcs.IDevice device)
+    class Program
     {
-        bool isFirstImage = true;
-        smcs.IImageInfo imageInfo = null;
-
-        while (true)
+        [STAThread]
+        static void Main(string[] args)
         {
-            if (device.WaitForImage(3.0))
+            CallbackHandler eventHandler = new CallbackHandler();
+
+            // initialize Camera API
+            smcs.CameraSuite.InitCameraAPI();
+            smcs.ICameraAPI smcsApi = smcs.CameraSuite.GetCameraAPI();
+
+            if (!smcsApi.IsUsingKernelDriver())
             {
-                device.GetImageInfo(ref imageInfo);
-                if (imageInfo != null)
+                Console.Out.WriteLine("Warning: Smartek Filter Driver not loaded.");
+            }
+
+            smcsApi.SetHeartbeatTime(3);
+            smcsApi.RegisterCallback(eventHandler);
+
+            // discover all devices on network
+            smcsApi.FindAllDevices(3.0);
+            smcs.IDevice[] devices = smcsApi.GetAllDevices();
+            if (devices.Length <= 0) return;
+
+            smcs.IDevice device = devices[0];
+            if (device == null || !device.Connect())
+            {
+                Console.Out.WriteLine("Cannot connect to device: " +device.GetIpAddress().ToString() + " press any key to exit.");
+                return;
+            }
+
+            string text;
+            Int64 int64Value;
+
+            Console.Out.WriteLine("Connected to first camera: " + device.GetIpAddress().ToString());
+            if (device.GetStringNodeValue("DeviceVendorName", out text))
+            {
+                Console.Out.WriteLine("Device Vendor: " + text);
+            }
+            if (device.GetStringNodeValue("DeviceModelName", out text))
+            {
+                Console.Out.WriteLine("Device Model: " + text);
+            }
+            if (device.GetIntegerNodeValue("Width", out int64Value))
+            {
+                Console.Out.WriteLine("Width: " + int64Value);
+            }
+            if (device.GetIntegerNodeValue("Height", out int64Value))
+            {
+                Console.Out.WriteLine("Height: " + int64Value);
+            }
+
+            Int64 packetSize = 0;
+            device.GetIntegerNodeValue("GevSCPSPacketSize", out packetSize);
+            packetSize = packetSize & 0xFFFF;
+            Console.Out.WriteLine("PacketSize: " + packetSize);
+
+            // disable trigger mode
+            bool status = device.SetStringNodeValue("TriggerMode", "Off");
+            // set continuous acquisition mode
+            status = device.SetStringNodeValue("AcquisitionMode", "Continuous");
+            // start acquisition
+            status = device.SetIntegerNodeValue("TLParamsLocked", 1);
+            status = device.CommandNodeExecute("AcquisitionStart");
+
+            Console.Out.WriteLine("Acquisition Start, press any key to exit loop...");
+
+            bool isFirstImage = true;
+            smcs.IImageInfo imageInfo = new smcs.IImageInfo();
+
+            // acquire images
+            while (!System.Console.KeyAvailable)
+            {
+                if (!device.GetImageInfo(ref imageInfo)) continue;
+
+                if (isFirstImage)
                 {
-                    uint sizeX, sizeY;
+                    UInt32 sizeX, sizeY;
                     imageInfo.GetSize(out sizeX, out sizeY);
-                    Console.WriteLine("Image acquise avec taille : " + sizeX + "x" + sizeY);
-
-                    // Traiter l'image ici
-
-                    device.PopImage(imageInfo);
+                    Console.Out.WriteLine("Acquiring image with size: " + sizeX + "x" + sizeY
+                            + " ...");
+                    UInt32 pendingImages = device.GetPendingImagesCount();
+                    Console.Out.WriteLine("Pending images count: " + pendingImages);
+                    isFirstImage = false;
                 }
+                else
+                {
+                    Console.Out.Write(".");
+                }
+
+                device.PopImage(imageInfo);
             }
-            else
-            {
-                Console.WriteLine("Aucune nouvelle image reçue.");
-            }
+            // stop acquisition
+            status = device.CommandNodeExecute("AcquisitionStop");
+            status = device.SetIntegerNodeValue("TLParamsLocked", 0);
+
+            // disconnect from camera
+            device.Disconnect();
+
+            smcsApi.UnregisterCallback(eventHandler);
+            smcs.CameraSuite.ExitCameraAPI();
+            while (!System.Console.KeyAvailable) ;
         }
     }
 }
+
 
