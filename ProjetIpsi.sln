@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.6.33723.286
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjetIpsi", "ProjetIpsi.csproj", "{869E4357-C3FA-4D63-822F-3C9BB3454467}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProjetIpsi", "ProjetIpsi.csproj", "{869E4357-C3FA-4D63-822F-3C9BB3454467}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
