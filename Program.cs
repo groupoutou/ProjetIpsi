@@ -3,8 +3,9 @@ using smcs; // Assurez-vous d'importer le namespace smcs
 
 class Program
 {
-    static void Main(string[] args)
+    static void Main(string[] args) 
     {
+        int test;
         // Initialiser CameraSuite
         smcs.CameraSuite.InitCameraAPI();
         smcs.ICameraAPI smcsApi = smcs.CameraSuite.GetCameraAPI();
