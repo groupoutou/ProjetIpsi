@@ -5,7 +5,7 @@ VisualStudioVersion = 17.6.33723.286
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProjetIpsi", "ProjetIpsi.csproj", "{869E4357-C3FA-4D63-822F-3C9BB3454467}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JeudeDame", "..\JeudeDame\JeudeDame.vcxproj", "{19257632-3157-4493-BBE9-C73913E5957F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JeudeDame", "JeudeDame\JeudeDame.vcxproj", "{19257632-3157-4493-BBE9-C73913E5957F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
