@@ -32,6 +32,4 @@ public :
 		estDame = false;
 	}
 };
-#define Case_vide Case(0, 0, ' ', false)
-#define Case_invalide Case(-1, -1, 'X', false)
 

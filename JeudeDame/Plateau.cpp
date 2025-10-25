@@ -10,13 +10,14 @@ Case* Plateau::TrouverCase(int i, int j)
 {
 	 //i pair ?
 	if (i % 2 == 0 && j%2 ==0)
-			return &data[0]; // case non jouable
+			return &Case_invalide; // case non jouable
 	if (i % 2 == 1 && j % 2 == 1)
-		return &data[0]; // case non jouable	
-	//case or limite
+		return &Case_invalide; // case non jouable	
+	//case hors limite
 	if (i < 1 || i>10 || j < 1 || j>10)
-		return &data[0]; // case non jouable
+		return &Case_invalide; // case non jouable
 	int k = 0;
+
 	if (i % 2 == 0)
 		k = (i - 1) * 5 + (j / 2) + 1;
 	else
@@ -25,6 +26,15 @@ Case* Plateau::TrouverCase(int i, int j)
 	return &data[k];
 	}
 
+int Plateau::TrouverIndex(int i, int j) {
+	int k = 0;
+	if (i % 2 == 0)
+		k = (i - 1) * 5 + (j / 2) + 1;
+	else
+		k = (i - 1) * 5 + (j / 2);
+	k--;
+	return k;
+}
 
 
 char Plateau::TrouverCouleur(int i, int j) {
@@ -101,7 +111,7 @@ void Plateau::jouercoup(COUP c) {
 	arriveei = c.getArrivee().getX();
 	arriveej = c.getArrivee().getY();
 	(*this->TrouverCase(arriveei, arriveej)).setCouleur(couleurpion);
-	this->afficher();
+
 
 
 	
@@ -144,10 +154,7 @@ COUP Plateau::peutcapturer(Case depart, int diag) {
 		ennemie = 'N';
 	}
 
-	if (depart.getEstDame()) {
-		//A IMPLEMENTER PLUS TARD
-		return coup_vide;
-	}
+
 
 	Case case1 = this->getdiag(depart, diag);
 	Case case2 = this->getdiag(case1, diag);
@@ -173,10 +180,7 @@ COUP Plateau::peutbouger(Case depart, int diag) {
 		
 	}
 
-	if (depart.getEstDame()) {
-		//A IMPLEMENTER PLUS TARD
-		return coup_vide;
-	}
+
 
 	Case case1 = this->getdiag(depart, diag);
 	if (case1.getCouleur() == ' ') {
@@ -188,41 +192,109 @@ COUP Plateau::peutbouger(Case depart, int diag) {
 
 }
 
+
+
 void Plateau::AjouterCoup(char couleur) {
 	//on vide la liste des coups legaux
 
 	CoupsLegaux.clear();
+	bool capture = false;
 
 	//on parcourt le plateau
+	std::vector<COUP> couppossible;
 	for (int i = 0; i < 50; i++)
 	{
-		Case c = data[i];
-		if (c.getCouleur() == couleur) {
-			//on regarde si le pion peut capturer
-			for (int diag = 1; diag <= 4; diag++) {
-				COUP coup = this->peutcapturer(c, diag);
-				if (coup.getDepart().getCouleur() != ' ') { //coup non vide 
-					CoupsLegaux.push_back(coup);
-				}
-			}
-		}
-	}
-	if (CoupsLegaux.size() == 0) {
-		for (int i = 0; i < 50; i++)
-		{
-			Case c = data[i];
-			//si il ne peut pas capturer on regarde s'il peut bouger
-			if (c.getCouleur() == couleur) {
-				for (int diag = 1; diag <= 4; diag++) {
-					COUP coup = this->peutbouger(c, diag);
-					if (coup.getDepart().getCouleur() != ' ') //coup non vide 
-						CoupsLegaux.push_back(coup);
-
-				}
-			}
-		}
+		couppossible.clear();
+		bool old = capture;
+		couppossible = this->CoupPossible(i, &capture, couleur);
+		if (old != capture) // si capture est passé a true
+			CoupsLegaux.clear();
+		CoupsLegaux.insert(CoupsLegaux.end(), couppossible.begin(), couppossible.end());
+		
 	}
 }
+
+std::vector<COUP> Plateau::CoupPossible(int index, bool* capture,char couleur) {
+
+	Case c = this->data[index];
+	std::vector<COUP> listecoup;
+	listecoup.clear();
+	if (c.getCouleur() == couleur) {
+		if (c.getEstDame())
+		{
+			//on parcours les 4 diagonales
+			Case current = c;
+			for (int diag = 1; diag <= 4; diag++) {
+				std::vector<Case> suitediag;
+				int num = 0;
+				while (true) {
+					Case next = this->getdiag(current, diag);
+					if (next.getCouleur() == 'X')  //case invalide 
+						break;
+					else {
+						suitediag.push_back(next);
+						current = next;
+					}
+					num++;
+				}
+
+				int nombreDepionManger = 0;
+				Case capturer = Case_vide;
+				//on parcours la diagonale
+				for (int k = 1; k < num; k++) {
+					Case test = suitediag[k];
+					if (test.getCouleur() == ' ') {
+						if (nombreDepionManger == 1) {
+							//on ajoute le coup de capture
+							COUP coup = COUP(c, test, capturer);
+							listecoup.push_back(coup);
+							*capture = true;
+						}
+						else if (nombreDepionManger == 0 && not(*capture)) {
+							//on ajoute le coup de deplacement
+							COUP coup = COUP(c, test, Case_vide);
+							listecoup.push_back(coup);
+						}
+					}
+					else if (test.getCouleur() != couleur && test.getCouleur() != ' ') {
+						nombreDepionManger++;
+						capturer = test;
+						if (nombreDepionManger > 1) {
+							break; //plus d'une piece ennemie sur la diagonale
+						}
+					}
+					else if (test.getCouleur() == couleur) {
+						break; //une piece amie bloque la diagonale
+					}
+				}	
+			}	
+	
+		}
+
+		else {
+			
+		//on regarde si le pion peut capturer
+		for (int diag = 1; diag <= 4; diag++) {
+			COUP coup = this->peutcapturer(c, diag);
+			if (coup.getDepart().getCouleur() != ' ') { //coup non vide 
+					listecoup.push_back(coup);
+					*capture = true;
+			}
+		}
+		if (not(*capture)) {
+		//si il ne peut pas capturer on regarde s'il peut bouger
+			for (int diag = 1; diag <= 4; diag++) {
+					COUP coup = this->peutbouger(c, diag);
+					if (coup.getDepart().getCouleur() != ' ') //coup non vide 
+						listecoup.push_back(coup);
+			}
+		}	
+			
+		}
+	}
+	return listecoup;
+}
+
 
 
 Plateau::Plateau()
@@ -262,4 +334,19 @@ void Plateau::AfficherCoupsLegaux() {
 	for (int i = 0; i < CoupsLegaux.size(); i++) {
 		CoupsLegaux[i].afficher();
 	}
+}
+
+
+void Plateau::TESTdame() {
+	//reset le plateau
+	for (int k = 0; k < 50; k++) {
+		this->data[k].setCouleur(' ');
+	}
+	//placer une dame noire en 5,5
+	this->data[this->TrouverIndex(5, 5)].setCouleur('N');
+	this->data[this->TrouverIndex(5, 5)].setEstDame(true);
+	//placer des pions blancs
+	this->data[this->TrouverIndex(4, 6)].setCouleur('B');
+
+
 }
