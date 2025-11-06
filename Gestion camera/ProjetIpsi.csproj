@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\JeudeDame\JeudeDame.vcxproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="CameraSuite_NET">
       <HintPath>C:\Program Files\SMARTEKvision\CameraSuite\bin\CameraSuite_NET.dll</HintPath>
     </Reference>
